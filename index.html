@@ -64,6 +64,16 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       var socket = io();
+      var form = document.getElementById('form');
+      var input = document.getElementById('input');
+
+      form.addEventListener('submit', (e)=>{
+        e.preventDefault(); //stops reloading the fucking page
+        if(input.value){
+            socket.emit('chat message', input.value);
+            input.value=''; //clearing the input value
+        }
+      });
     </script>
   </body>
 </html>
