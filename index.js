@@ -4,6 +4,21 @@ const { join } = require("node:path");
 const { Server } = require("socket.io");
 const sqlite3 = require("sqlite3");
 const { open } = require("sqlite");
+const {availableParallelism} = require('node:os');
+const cluster = require('node:cluster');
+const {createAdapter, setupPrimary} = require('@socket.io/cluster-adapter');
+
+if(cluster.isPrimary){
+  const numCPUs = availableParallelism();
+  //create one worker per available core
+  for(let i = 0; i < numCPUs; i++){
+    cluster.fork({
+      PORT: 3002 + i
+    });
+  }
+  //setup the adapter on the primary thread
+  return setupPrimary();
+}
 
 async function main() {
   const db = await open({
@@ -22,6 +37,8 @@ async function main() {
   const server = createServer(app);
   const io = new Server(server, {
     connectionStateRecovery: {},
+    //setup the adapater on each worker thread
+    adapter: createAdapter()
   });
 
   app.get("/", (req, res) => {
@@ -67,8 +84,9 @@ async function main() {
     });
   });
 
-  server.listen(3002, () => {
-    console.log("server is listening on: http://localhost:3002");
+  const port = process.env.PORT;
+  server.listen(port, () => {
+    console.log(`server is listening on: http://localhost:${port}`);
   });
 }
 
